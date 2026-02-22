@@ -1,0 +1,9 @@
+{
+  "name": "ScanWise AI – Next-Gen Multimodal Clinical Intelligence Platform",
+  "description": "Unified Diagnostic Reasoning Across Imaging, Laboratories, and EHR",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
