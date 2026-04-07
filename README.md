@@ -1,6 +1,6 @@
 # 🏥 ScanWise AI
-### Next-Generation Multimodal Clinical Intelligence Platform
-> Unified Diagnostic Reasoning Across Imaging, Laboratories, and EHR Ecosystems.
+### **Next-Generation Multimodal Clinical Intelligence Platform**
+> *Unified Diagnostic Reasoning Across Imaging, Laboratories, and EHR Ecosystems.*
 
 [![Platform](https://img.shields.io/badge/Platform-Medical--Grade%20AI-blue.svg?style=for-the-badge)]()
 [![Engine](https://img.shields.io/badge/Engine-Gemini%203%20Pro-purple.svg?style=for-the-badge)]()
@@ -10,178 +10,83 @@
 
 ## 💎 Executive Overview
 
-ScanWise AI is an enterprise-grade Clinical Decision Support (CDS) platform designed to eliminate diagnostic silos across radiology, laboratory systems, and electronic health record ecosystems.
+**ScanWise AI** is an enterprise-grade clinical decision support system designed to eliminate diagnostic silos. By synthesizing high-resolution medical imaging (DICOM), longitudinal laboratory data, and real-time clinical notes, the platform provides a **single source of clinical truth**.
 
-By synthesizing:
-
-- High-resolution DICOM imaging
-- Longitudinal laboratory biomarkers
-- Real-time clinical documentation
-
-the platform establishes a **single source of clinical truth** for high-confidence triage, differential diagnosis, and transplant intelligence workflows.
-
-Powered by a multi-agent architecture leveraging Gemini 3 Pro and Gemini 3 Flash, ScanWise AI performs deep cross-modal reasoning—verifying imaging abnormalities against biochemical markers and structured EHR tensors.
+Leveraging a multi-agentic architecture powered by **Gemini 3 Pro**, ScanWise AI performs deep correlation—verifying visual abnormalities against biochemical markers to provide high-confidence triage and surgical matching.
 
 ---
 
-# 🚀 Core Clinical Modules
+## 🚀 The 6 Core Clinical Modules
 
-## 1️⃣ Multimodal Agentic Ingestion
+### 1. 🔍 Multimodal Agentic Ingestion
+The entry point for all clinical data. This module handles the secure intake of diverse medical assets.
+*   **AI Modality Detection:** Automatically identifies whether an upload is an MRI, CT, X-ray, or Lab Report using Gemini Vision.
+*   **Anatomical Localization:** Pinpoints the region of interest (e.g., Brain, Chest, Spine) without manual tagging.
+*   **Privacy-First Design:** Strips PII/PHI locally before cloud-based reasoning to ensure HIPAA compliance.
+*   **PACS Integration:** Ready for high-fidelity radiology streams and DICOM standard headers.
 
-Secure entry layer for all medical data streams.
+### 2. 🧠 Clinical Reasoning & Analysis
+The "brain" of the platform where cross-modal correlation happens.
+*   **Dual-Engine Pipeline:** Uses Gemini 3 Flash for rapid OCR/summarization and Gemini 3 Pro for complex differential diagnosis.
+*   **Cross-Modal Correlation:** Correlates visual findings (e.g., T2/FLAIR Hyperintensities) with Lab Results (e.g., CSF Oligoclonal Bands) to confirm diagnostic hypotheses.
+*   **ROI Heatmapping:** Dynamic coordinate mapping for visual identification of lesions and anatomical variants.
+*   **Live Peer-Review:** A low-latency voice assistant for hands-free surgical consultation and finding queries.
 
-- AI modality detection (MRI, CT, X-ray, Lab Report)
-- Automated anatomical localization
-- Local PHI/PII stripping prior to cloud inference
-- PACS-ready DICOM compatibility
-- OCR extraction from unstructured documents
+### 3. 📊 Operational Triage Dashboard
+A mission-control interface for hospital administrators and department heads.
+*   **Predictive Workload:** Forecasts arrival density and triage pressure using Recharts-driven predictive modeling.
+*   **Regional Trauma Mapping:** Real-time grounding via Google Maps to identify nearby Level 1 Trauma Centers and recovery capacity.
+*   **System Briefing:** Generates an AI-driven executive summary of the current clinical state and queue velocity.
+*   **Modality Mix Tracking:** Visualizes the distribution of active scans to optimize equipment utilization.
 
-**Output:** Structured, anonymized clinical tensors ready for reasoning.
+### 4. 🫀 Transplant Intelligence Hub
+A specialized module for high-stakes organ procurement and matching.
+*   **Statutory Compliance:** Automated MELD, EPTS, and LAS score calculations based on UNOS/OPTN standards.
+*   **CIT Logistics Tracking:** Real-time monitoring of **Cold Ischemia Time** (CIT) with organ-specific viability windows.
+*   **Mission Simulation:** Logistics engine for aerial and ground procurement transit routing.
+*   **Matching Engine:** Multi-factor correlation of blood type, HLA markers, and morphology.
 
----
+### 5. 🗣️ Patient-Centric Communication
+Bridging the gap between technical diagnosis and patient understanding.
+*   **Narrative Translation:** Converts complex radiology jargon into empathetic, plain-language summaries (e.g., "T2 Hyperintensities" → "Small signal changes in brain signals").
+*   **Health Literacy Focus:** Improves patient compliance by providing clear "What's Next" steps and educational context.
+*   **Secure Messaging:** Integrated bridge for patients to message clinical assistants regarding their findings.
 
-## 2️⃣ Clinical Reasoning & Analysis
-
-Cross-modal diagnostic intelligence engine.
-
-- Dual inference pipeline
-  - Gemini 3 Flash → OCR + summarization
-  - Gemini 3 Pro → Differential diagnosis modeling
-- Imaging–Lab correlation
-- ROI heatmapping for lesion localization
-- Explainable reasoning trees
-- Live voice-enabled peer-review assistant
-
-**Output:** High-confidence, transparent diagnostic hypotheses.
-
----
-
-## 3️⃣ Operational Triage Dashboard
-
-Mission-control layer for hospital operations.
-
-- Predictive workload forecasting
-- Queue velocity tracking
-- Regional trauma mapping
-- Modality distribution analytics
-- AI-generated executive clinical briefings
-
-**Output:** Data-driven triage prioritization and equipment optimization.
-
----
-
-## 4️⃣ Transplant Intelligence Hub
-
-High-stakes organ allocation support module.
-
-- Automated MELD, EPTS, LAS scoring
-- Cold Ischemia Time (CIT) monitoring
-- Organ viability window alerts
-- Multi-factor HLA + blood type matching
-- Logistics simulation (air + ground routing)
-
-**Output:** Compliance-aligned transplant decision augmentation.
+### 6. 🌐 EHR Bridge (FHIR R4)
+The interoperability layer connecting ScanWise AI to the broader hospital ecosystem.
+*   **Interoperability:** Bidirectional sync with Epic, Cerner, and Apollo Health Records using FHIR R4.
+*   **Transformation Engine:** Granular UI for mapping AI-detected "Clinical Tensors" to specific EMR segments (e.g., Problem List, Assessment & Plan).
+*   **Unit Normalization:** Automated metric/imperial conversion and ISO-8601 date reformatting via HL7 middleware.
+*   **Audit Ledger:** Immutable log of all data pushes and pulls for regulatory transparency.
 
 ---
 
-## 5️⃣ Patient-Centric Communication
-
-Bridging technical diagnostics and patient understanding.
-
-- Radiology jargon → Plain-language translation
-- Health literacy optimization
-- Structured “What’s Next” guidance
-- Secure patient-clinician communication bridge
-
-**Output:** Improved clarity, trust, and adherence.
-
----
-
-## 6️⃣ EHR Bridge (FHIR R4)
-
-Interoperability backbone of ScanWise AI.
-
-- Bidirectional FHIR R4 synchronization
-- AI-tensor mapping to:
-  - Problem List
-  - Assessment & Plan
-  - Observations
-  - Procedures
-- Unit normalization (metric/imperial)
-- ISO-8601 standardization
-- Immutable audit ledger
-
-**Output:** Seamless integration into major EMR systems.
-
----
-
-# 🛠 Technical Architecture
+## 🛠 Technical Architecture
 
 | Stack Segment | Technologies |
-|---------------|-------------|
-| Frontend | React 19 (Functional Components, Hooks) |
-| AI Engine | Gemini 3 Pro-Preview, Gemini 3 Flash |
-| Audio | Gemini 2.5 Flash Native Audio |
-| Visualization | Recharts, Tailwind CSS |
-| Icons | Lucide-React |
-| Interoperability | FHIR R4 (HL7 Middleware) |
-| Security | End-to-End Encryption + Anonymization Middleware |
-| Runtime | Node v2.5 |
+| :--- | :--- |
+| **Frontend Framework** | React 19 (Functional Components, Hooks) |
+| **AI Reasoning Engine** | Google Gemini 3 Pro-Preview & Gemini 3 Flash |
+| **Real-time Audio** | Gemini 2.5 Flash Native Audio (Live Assistant) |
+| **Grounding Tools** | Google Search (Research), Google Maps (Logistics) |
+| **Visualization** | Recharts, Tailwind CSS (Modern Utility Styling) |
+| **Icons** | Lucide-React |
 
 ---
 
-# 📑 Agentic Workflow
+## 📑 Agentic Workflow Paradigm
 
-1. Ingestion → De-identification + modality detection  
-2. Reasoning → Imaging ↔ Lab correlation  
-3. Grounding → Validation against recent clinical research  
-4. Action → Clinical Handshake generation  
-5. Integration → FHIR-based EHR push  
-
----
-
-# 🔐 Regulatory Positioning
-
-ScanWise AI is a Clinical Decision Support (CDS) tool.
-
-- Assists licensed healthcare professionals
-- Provides multimodal correlation
-- Does not replace independent clinical judgment
-
-All transplant allocations must follow national procurement protocols and be validated by certified transplant coordinators.
+1.  **Ingestion:** Data is de-identified and modality is detected via Gemini Vision.
+2.  **Reasoning:** The system correlates imaging with laboratory biomarkers.
+3.  **Grounding:** Real-time search checks findings against 2024-2025 clinical trials for rare disease matching.
+4.  **Action:** The system generates a "Clinical Handshake"—a technical professional summary and a patient-centric narrative.
+5.  **Integration:** Findings are pushed to the EHR via the FHIR Bridge with custom transformation rules.
 
 ---
 
-# 🧪 Recent Improvements
+## ⚖️ Regulatory & Safety Disclaimer
 
-## Code Quality
-- Implemented ESLint pipeline
-- Resolved all TypeScript errors
-- Corrected JSX syntax inconsistencies
-- Stabilized global `window` definitions
-
-## Stability
-- Verified production build integrity
-- Confirmed zero lint violations
-- Ensured deployment-ready environment
+*ScanWise AI is a Clinical Decision Support (CDS) tool. It is intended to assist healthcare professionals by providing data synthesis and correlation. It does not replace independent clinical judgment or certified medical diagnosis. All transplant allocations must follow national procurement protocols and be verified by a Human Transplant Coordinator.*
 
 ---
-
-# 🎯 Strategic Differentiation
-
-- True multimodal reasoning (beyond single-model inference)
-- Transplant-aware intelligence layer
-- Real-time voice-enabled clinical interaction
-- Dual-output reporting (Clinician + Patient)
-- Tensor-based EHR transformation mapping
-
----
-
-# 📌 Version
-
-ScanWise AI v2.5  
-Developed by Faizan Ahmed
-Node Infrastructure Edition
-ScanWise AI v2.5
-Developed by Senior Clinical Engineering Group
-Node Infrastructure Edition
+**Developed by Senior Clinical Engineering Group • v2.5 Node**

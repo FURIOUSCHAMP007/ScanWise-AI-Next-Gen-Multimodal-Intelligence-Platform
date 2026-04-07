@@ -80,3 +80,12 @@ export interface EMRPatientRecord {
 }
 
 export type AppView = 'home' | 'dashboard' | 'ingestion' | 'analysis' | 'patient' | 'ehr' | 'transplant';
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}

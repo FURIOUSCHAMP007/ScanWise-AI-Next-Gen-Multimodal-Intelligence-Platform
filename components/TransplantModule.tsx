@@ -74,7 +74,7 @@ import {
   GitBranch,
   Calculator,
   Plane,
-  Radar,
+  Radar as RadarIcon,
   Navigation,
   Key,
   Smartphone,
@@ -84,8 +84,30 @@ import {
   BarChart3,
   Flame,
   ThermometerSnowflake,
-  ShieldQuestion
+  ShieldQuestion,
+  Navigation2,
+  PlaneTakeoff,
+  PlaneLanding,
+  Truck as TruckIcon,
+  AlertCircle as AlertIcon,
+  Quote,
+  Link2
 } from 'lucide-react';
+import { 
+  Radar as RechartsRadar, 
+  RadarChart, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  PolarRadiusAxis, 
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid
+} from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
 import { MedicalScan, AIDiagnosisResult, LabReportInsights } from '../types';
 import { verifyTransplantCompliance, getPersonalizedMatchingLogic, validateOrganMatch } from '../services/geminiService';
 
@@ -291,6 +313,7 @@ const TransplantModule: React.FC<{
   const [currentSimStep, setCurrentSimStep] = useState(0);
   const [missionProgress, setMissionProgress] = useState(0);
   const [ischemiaTimer, setIschemiaTimer] = useState("12:00:00");
+  const [missionEvents, setMissionEvents] = useState<{time: string, msg: string, type: 'info' | 'warning' | 'success'}[]>([]);
 
   // Interactive Flowchart State
   const [activeFlowId, setActiveFlowId] = useState<string>(selectedOrgan.flowSteps[0].id);
@@ -422,6 +445,25 @@ const TransplantModule: React.FC<{
     setActiveFlowId(selectedOrgan.flowSteps[0].id);
   }, [selectedOrgan]);
 
+  const radarData = useMemo(() => {
+    if (!selectedMatch) return [];
+    
+    // Calculate dimensions for radar
+    const aboScore = selectedMatch.bloodType === recipientProfile.bloodType ? 100 : 75;
+    const sizeScore = selectedMatch.bodySize === recipientProfile.bodySize ? 100 : 60;
+    const distScore = Math.max(0, 100 - (selectedMatch.distance / 5));
+    const urgencyScore = recipientProfile.medicalUrgency * 2.5; // Scale to 100
+    const hlaScore = selectedMatch.compatibilityScore;
+
+    return [
+      { subject: 'ABO', A: aboScore, fullMark: 100 },
+      { subject: 'HLA', A: hlaScore, fullMark: 100 },
+      { subject: 'Size', A: sizeScore, fullMark: 100 },
+      { subject: 'Urgency', A: urgencyScore, fullMark: 100 },
+      { subject: 'CIT/Dist', A: distScore, fullMark: 100 },
+    ];
+  }, [selectedMatch, recipientProfile]);
+
   const handleExplainLogic = async (match: DonorMatch) => {
     setIsExplaining(true);
     try {
@@ -470,22 +512,38 @@ const TransplantModule: React.FC<{
     setSimulationActive(true);
     setCurrentSimStep(0);
     setMissionProgress(0);
+    setMissionEvents([]);
     
+    const addEvent = (msg: string, type: 'info' | 'warning' | 'success' = 'info') => {
+      setMissionEvents(prev => [{ time: new Date().toLocaleTimeString(), msg, type }, ...prev]);
+    };
+
     // Set initial timer based on organ's max CIT
     const maxH = selectedOrgan.maxCitHours;
     setIschemiaTimer(`${maxH.toString().padStart(2, '0')}:00:00`);
 
-    const steps = 4;
-    for (let i = 1; i <= steps; i++) {
+    addEvent("Mission Launch: Dispatching recovery team.", "info");
+
+    const steps = [
+      { id: 1, label: 'Organ Recovery', event: "Recovery successful. Cross-clamp time logged." },
+      { id: 2, label: 'Packaging', event: "Organ stabilized in OCS. Temperature: 4°C." },
+      { id: 3, label: 'In-Air Transit', event: "Flight at cruise altitude. ETA stable." },
+      { id: 4, label: 'Recipient OR Link', event: "Arrival at destination. Handing over to surgical team.", type: 'success' as const },
+    ];
+
+    for (let i = 1; i <= steps.length; i++) {
       setCurrentSimStep(i);
+      const step = steps[i-1];
+      addEvent(step.event, step.type || 'info');
+
       const startProgress = (i - 1) * 25;
       const endProgress = i * 25;
       for (let p = startProgress; p <= endProgress; p += 2) {
         setMissionProgress(p);
-        await new Promise(r => setTimeout(r, 80));
+        await new Promise(r => setTimeout(r, 60));
       }
       
-      // Update Ischemia Timer simulation - aggressive countdown for visual impact
+      // Update Ischemia Timer simulation
       setIschemiaTimer(prev => {
         const parts = prev.split(':');
         let h = parseInt(parts[0]);
@@ -494,8 +552,14 @@ const TransplantModule: React.FC<{
         if (m < 0) { h -= 1; m = 45; }
         return `${Math.max(0, h).toString().padStart(2, '0')}:${Math.max(0, m).toString().padStart(2, '0')}:00`;
       });
-      await new Promise(r => setTimeout(r, 1000));
+
+      if (i === 2 && selectedMatch.distance > 200) {
+        addEvent("Minor turbulence detected. Flight path adjusted.", "warning");
+      }
+
+      await new Promise(r => setTimeout(r, 800));
     }
+    addEvent("Mission Complete: Organ delivered to OR.", "success");
   };
 
   const resetMatchState = () => {
@@ -557,7 +621,7 @@ const TransplantModule: React.FC<{
             { id: 'matching', label: 'Match Engine', icon: ArrowRightLeft },
             { id: 'protocols', label: 'Allocation', icon: Gavel },
             { id: 'audit', label: 'Compliance', icon: Shield },
-            { id: 'tracking', label: 'Tracking', icon: Radar },
+            { id: 'tracking', label: 'Tracking', icon: RadarIcon },
           ].map(t => (
             <button
               key={t.id}
@@ -763,7 +827,7 @@ const TransplantModule: React.FC<{
                       <div className="bg-slate-900/80 rounded-[40px] border border-white/10 p-8 font-mono text-[11px] h-64 overflow-hidden relative shadow-inner">
                          <div className="space-y-2 text-cyan-500">
                             <p><span className="opacity-40">[{new Date().toLocaleTimeString()}]</span> SYS: Initiating recursive audit...</p>
-                            {deploymentStep > 0 && <p className="text-emerald-500">>> {currentActionLog}</p>}
+                            {deploymentStep > 0 && <p className="text-emerald-500">{" >> "} {currentActionLog}</p>}
                             {deploymentStep > 3 && finalClinicalAudit && (
                               <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-100 animate-in fade-in">
                                  <p className="text-[8px] font-black uppercase text-emerald-500 mb-2">Final Clinical Clearance (Gemini 3 Pro)</p>
@@ -790,59 +854,145 @@ const TransplantModule: React.FC<{
                 </div>
               </div>
             ) : selectedMatch ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
-                <div className="space-y-8">
-                  <div className="bg-[#16191F] border border-white/5 p-12 rounded-[60px] shadow-2xl space-y-12 ring-1 ring-white/5">
-                     <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-black flex items-center gap-3 text-white"><Scale className="w-7 h-7 text-rose-500" /> Comparison</h3>
-                        <div className="px-4 py-2 bg-rose-500/10 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-xl">Node: {selectedMatch.id}</div>
-                     </div>
-                     <div className="grid grid-cols-2 gap-10 relative">
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"><div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center border border-white/10 backdrop-blur-xl shadow-2xl"><ArrowRightLeft className="w-8 h-8 text-blue-500" /></div></div>
-                        <div className="space-y-6">
-                           <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Recipient</p>
-                           {[{ l: 'ABO', v: recipientProfile.bloodType }, { l: 'Size', v: recipientProfile.bodySize }, { l: 'MELD', v: recipientProfile.medicalUrgency }].map(s => (
-                             <div key={s.l} className="bg-slate-900/50 p-6 rounded-3xl border border-white/5"><p className="text-[8px] font-black text-slate-500 uppercase mb-1">{s.l}</p><p className="text-xl font-bold text-white">{s.v}</p></div>
-                           ))}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-7xl mx-auto">
+                {/* Left Column: Comparison & Radar */}
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="bg-[#16191F] border border-white/5 p-12 rounded-[60px] shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-12 opacity-[0.02] -rotate-12 scale-150"><Target className="w-64 h-64 text-rose-500" /></div>
+                    
+                    <div className="relative z-10 space-y-12">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h3 className="text-3xl font-black text-white flex items-center gap-3"><Scale className="w-7 h-7 text-rose-500" /> Match Correlation</h3>
+                          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest">Donor Node: {selectedMatch.id} ↔ Recipient: {recipientProfile.id}</p>
                         </div>
-                        <div className="space-y-6 text-right">
-                           <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-4">Donor</p>
-                           {[{ l: 'ABO', v: selectedMatch.bloodType }, { l: 'Size', v: selectedMatch.bodySize }, { l: 'CIT Max', v: `${selectedMatch.viabilityWindow}h` }].map(s => (
-                             <div key={s.l} className="bg-slate-900/50 p-6 rounded-3xl border border-white/5"><p className="text-[8px] font-black text-slate-500 uppercase mb-1">{s.l}</p><p className="text-xl font-bold text-white">{s.v}</p></div>
-                           ))}
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Compatibility</p>
+                          <p className="text-6xl font-black text-rose-500 tracking-tighter">{selectedMatch.compatibilityScore}%</p>
                         </div>
-                     </div>
-                     <div className="pt-12 border-t border-white/5 space-y-4">
-                        <div className="flex items-center justify-between text-white"><span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Compatibility</span><span className="text-5xl font-black text-rose-500 tracking-tighter">{selectedMatch.compatibilityScore}%</span></div>
-                        <div className="h-3 bg-slate-900 rounded-full overflow-hidden"><div className="h-full bg-rose-500 transition-all duration-1000" style={{ width: `${selectedMatch.compatibilityScore}%` }}></div></div>
-                     </div>
+                      </div>
 
-                     {/* CIT Clinical Warning Panel */}
-                     <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-[32px] flex items-start gap-4">
-                        <ThermometerSnowflake className="w-6 h-6 text-amber-500 shrink-0" />
-                        <div>
-                           <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1">Cold Ischemia Warning</p>
-                           <p className="text-xs text-slate-300 font-medium">Predicted transit + procurement: <span className="text-white font-bold">2.4h</span>. Within optimal window for {selectedOrgan.label} ({selectedOrgan.citRange}).</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        {/* Radar Chart */}
+                        <div className="h-[350px] bg-slate-900/30 rounded-[40px] border border-white/5 p-6 relative">
+                          <div className="absolute inset-0 flex items-center justify-center opacity-10"><Dna className="w-48 h-48 text-blue-500" /></div>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                              <PolarGrid stroke="#334155" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
+                              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                              <RechartsRadar
+                                name="Match"
+                                dataKey="A"
+                                stroke="#f43f5e"
+                                fill="#f43f5e"
+                                fillOpacity={0.5}
+                              />
+                            </RadarChart>
+                          </ResponsiveContainer>
                         </div>
-                     </div>
+
+                        {/* Side-by-Side Stats */}
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-4">
+                              <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest text-center">Recipient</p>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">ABO</p>
+                                <p className="text-lg font-black text-white">{recipientProfile.bloodType}</p>
+                              </div>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">Size</p>
+                                <p className="text-lg font-black text-white">{recipientProfile.bodySize}</p>
+                              </div>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">Urgency</p>
+                                <p className="text-lg font-black text-white">{recipientProfile.medicalUrgency}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest text-center">Donor</p>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">ABO</p>
+                                <p className="text-lg font-black text-white">{selectedMatch.bloodType}</p>
+                              </div>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">Size</p>
+                                <p className="text-lg font-black text-white">{selectedMatch.bodySize}</p>
+                              </div>
+                              <div className="bg-slate-900 p-5 rounded-3xl border border-white/5 space-y-1">
+                                <p className="text-[8px] font-black text-slate-600 uppercase">CIT Max</p>
+                                <p className="text-lg font-black text-white">{selectedMatch.viabilityWindow}h</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-3xl flex items-start gap-4">
+                            <ThermometerSnowflake className="w-6 h-6 text-amber-500 shrink-0" />
+                            <div>
+                              <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1">Logistics Window</p>
+                              <p className="text-[11px] text-slate-300 font-medium">Predicted transit: <span className="text-white font-bold">2.4h</span>. Within optimal window for {selectedOrgan.label} ({selectedOrgan.citRange}).</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-10 flex flex-col justify-between">
-                   <div className="bg-[#16191F] border border-white/5 p-12 rounded-[60px] shadow-2xl flex-1 flex flex-col justify-center">
-                      <div className="space-y-8 relative z-10">
-                         <h4 className="text-xl font-black flex items-center gap-3 text-white"><BrainCircuit className="w-6 h-6 text-blue-500" /> AI Correlation</h4>
-                         {aiExplanation ? <div className="bg-white/5 p-8 rounded-[40px] border border-white/10"><p className="text-lg font-medium text-slate-200 leading-relaxed italic">"{aiExplanation}"</p></div> : <div className="border-2 border-dashed border-white/5 rounded-[40px] p-16 flex flex-col items-center justify-center text-center space-y-6"><button onClick={() => handleExplainLogic(selectedMatch)} className="bg-blue-600/10 text-blue-400 px-8 py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center gap-3">{isExplaining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Microscope className="w-4 h-4" />} Request AI Audit</button></div>}
-                      </div>
-                   </div>
-                   <div className="space-y-4 pt-10">
-                      <button onClick={startFinalization} className="w-full py-6 bg-white text-slate-950 rounded-[32px] font-black text-xl shadow-3xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-4">Confirm Selection <ArrowRight className="w-6 h-6" /></button>
-                      <button onClick={() => setSelectedMatch(null)} className="w-full py-4 text-slate-600 font-black text-[10px] uppercase hover:text-white transition-colors">Abort</button>
-                   </div>
+
+                {/* Right Column: AI Audit & Actions */}
+                <div className="lg:col-span-4 space-y-8">
+                  <div className="bg-[#16191F] border border-white/5 p-10 rounded-[56px] shadow-2xl h-full flex flex-col">
+                    <div className="flex-1 space-y-8">
+                       <div className="flex items-center gap-3">
+                          <BrainCircuit className="w-8 h-8 text-blue-500" />
+                          <h4 className="text-xl font-black text-white">AI Clinical Audit</h4>
+                       </div>
+                       
+                       {aiExplanation ? (
+                         <div className="bg-slate-900/80 p-8 rounded-[40px] border border-white/10 relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><Sparkles className="w-12 h-12 text-blue-500" /></div>
+                           <p className="text-lg font-medium text-slate-200 leading-relaxed italic relative z-10">"{aiExplanation}"</p>
+                         </div>
+                       ) : (
+                         <div className="border-2 border-dashed border-white/5 rounded-[40px] p-12 flex flex-col items-center justify-center text-center space-y-6 flex-1">
+                            <div className="w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center text-blue-500"><Microscope className="w-8 h-8" /></div>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest max-w-[200px]">Requesting deep correlation of HLA and waitlist priority.</p>
+                            <button 
+                              onClick={() => handleExplainLogic(selectedMatch)} 
+                              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center gap-3 shadow-xl shadow-blue-600/20"
+                            >
+                              {isExplaining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />} Run AI Audit
+                            </button>
+                         </div>
+                       )}
+                    </div>
+
+                    <div className="space-y-4 pt-10">
+                       <button 
+                         onClick={startFinalization} 
+                         className="w-full py-6 bg-white text-slate-950 rounded-[32px] font-black text-xl shadow-3xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-4 group"
+                       >
+                         Confirm Match <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                       </button>
+                       <button 
+                         onClick={() => setSelectedMatch(null)} 
+                         className="w-full py-4 text-slate-600 font-black text-[10px] uppercase hover:text-white transition-colors"
+                       >
+                         Abort Match
+                       </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="p-20 text-center text-slate-500 font-bold uppercase tracking-widest bg-[#16191F] rounded-[48px] border border-white/5 shadow-2xl">
-                 Select a donor from the registry to initiate Match Engine.
+              <div className="p-24 text-center space-y-8 bg-[#16191F] rounded-[64px] border border-white/5 shadow-2xl max-w-4xl mx-auto">
+                 <div className="w-24 h-24 bg-slate-900 rounded-[32px] flex items-center justify-center mx-auto border border-white/5 text-slate-700"><ArrowRightLeft className="w-12 h-12" /></div>
+                 <div className="space-y-2">
+                    <h3 className="text-3xl font-black text-white">Match Engine Standby</h3>
+                    <p className="text-slate-500 font-medium text-lg">Select a donor from the registry to initiate multimodal correlation.</p>
+                 </div>
+                 <button onClick={() => setActiveTab('network')} className="bg-rose-600 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 transition-all">Open Registry</button>
               </div>
             )}
           </div>
@@ -852,113 +1002,186 @@ const TransplantModule: React.FC<{
           <div className="animate-in zoom-in-95 duration-700 space-y-12 pb-20">
              {!selectedMatch ? (
                <div className="bg-[#16191F] border border-white/5 p-20 rounded-[64px] shadow-3xl text-center space-y-8 flex flex-col items-center">
-                  <Radar className="w-20 h-20 text-slate-800 animate-pulse" />
+                  <RadarIcon className="w-20 h-20 text-slate-800 animate-pulse" />
                   <p className="text-2xl font-black text-slate-400">No active transport missions detected.</p>
                   <button onClick={() => setActiveTab('network')} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest">Find a Match First</button>
                </div>
              ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                  <div className="lg:col-span-8 bg-[#16191F] border-2 border-amber-500/20 p-12 rounded-[64px] shadow-3xl relative overflow-hidden ring-4 ring-amber-500/5">
-                    <div className="absolute top-0 right-0 p-16 opacity-5 -rotate-12 scale-150"><Radar className="w-64 h-64 text-amber-500" /></div>
-                    
-                    <div className="relative z-10 flex flex-col gap-16">
-                       <div className="space-y-10">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                             <div className="flex items-center gap-6">
-                               <div className="w-20 h-20 bg-amber-500 text-slate-950 rounded-3xl flex items-center justify-center shadow-2xl shadow-amber-500/20"><Plane className="w-10 h-10" /></div>
-                               <div>
-                                  <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-1 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Active Mission: TSX-882</div>
-                                  <h2 className="text-5xl font-black text-white tracking-tighter">Transport Plan</h2>
+                  <div className="lg:col-span-8 space-y-10">
+                    <div className="bg-[#16191F] border-2 border-amber-500/20 p-12 rounded-[64px] shadow-3xl relative overflow-hidden ring-4 ring-amber-500/5">
+                      <div className="absolute top-0 right-0 p-16 opacity-5 -rotate-12 scale-150"><RadarIcon className="w-64 h-64 text-amber-500" /></div>
+                      
+                      <div className="relative z-10 flex flex-col gap-16">
+                         <div className="space-y-10">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                               <div className="flex items-center gap-6">
+                                 <div className="w-20 h-20 bg-amber-500 text-slate-950 rounded-3xl flex items-center justify-center shadow-2xl shadow-amber-500/20"><Plane className="w-10 h-10" /></div>
+                                 <div>
+                                    <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-1 rounded-full text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Active Mission: TSX-882</div>
+                                    <h2 className="text-5xl font-black text-white tracking-tighter">Transport Plan</h2>
+                                 </div>
                                </div>
-                             </div>
-                             {!simulationActive ? (
-                                <button 
-                                  onClick={runMissionSimulation}
-                                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all shadow-xl shadow-amber-500/20 active:scale-95"
-                                >
-                                  <PlayCircle className="w-5 h-5" /> Launch Mission Simulation
-                                </button>
-                             ) : (
-                                <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl">
-                                   <Activity className="w-5 h-5 text-emerald-500 animate-pulse" />
-                                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">In-Progress Data Stream</span>
-                                </div>
-                             )}
-                          </div>
+                               {!simulationActive ? (
+                                  <button 
+                                    onClick={runMissionSimulation}
+                                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-3 transition-all shadow-xl shadow-amber-500/20 active:scale-95"
+                                  >
+                                    <PlayCircle className="w-5 h-5" /> Launch Mission Simulation
+                                  </button>
+                               ) : (
+                                  <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl">
+                                     <Activity className="w-5 h-5 text-emerald-500 animate-pulse" />
+                                     <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">In-Progress Data Stream</span>
+                                  </div>
+                               )}
+                            </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <div className="bg-slate-900 border border-white/5 p-8 rounded-[40px] space-y-6 group">
-                                <div className="flex items-center justify-between">
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Assignment</p>
-                                   <p className="text-amber-500 font-black text-xs uppercase">Priority 1</p>
-                                </div>
-                                <div className="flex items-center gap-6">
-                                   <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">{selectedMatch.distance > 160 ? <Plane className="w-7 h-7 text-blue-400" /> : <Wind className="w-7 h-7 text-emerald-400" />}</div>
-                                   <div>
-                                      <p className="text-xl font-black text-white">{selectedMatch.distance > 160 ? 'Citation CJ4 Jet' : 'Eurocopter EC135'}</p>
-                                      <p className="text-xs text-slate-500 font-medium">LifeFlight Air Logistics #44</p>
-                                   </div>
-                                </div>
-                             </div>
-                             <div className="bg-slate-900 border border-white/5 p-8 rounded-[40px] space-y-6">
-                                <div className="flex items-center justify-between">
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cold Ischemia Time (Remaining)</p>
-                                   <Timer className="w-4 h-4 text-rose-500 animate-pulse" />
-                                </div>
-                                <div>
-                                   <p className="text-3xl font-black text-white">{ischemiaTimer}</p>
-                                   <div className="h-2 bg-slate-800 rounded-full mt-3 overflow-hidden border border-white/5">
-                                      <div className="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-1000" style={{ width: `${85 - missionProgress/4}%` }}></div>
-                                   </div>
-                                </div>
-                             </div>
-                          </div>
+                            {/* Simulated Map View */}
+                            <div className="bg-slate-950 rounded-[40px] border border-white/10 h-64 relative overflow-hidden group">
+                               <div className="absolute inset-0 opacity-20">
+                                  <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                                  <svg className="w-full h-full" viewBox="0 0 800 300">
+                                     <path d="M100,150 Q400,50 700,150" fill="none" stroke="rgba(245,158,11,0.2)" strokeWidth="2" strokeDasharray="8 8" />
+                                     <circle cx="100" cy="150" r="4" fill="#3b82f6" />
+                                     <circle cx="700" cy="150" r="4" fill="#ef4444" />
+                                  </svg>
+                               </div>
+                               
+                               <motion.div 
+                                 className="absolute z-20"
+                                 animate={{ 
+                                   left: `${missionProgress}%`,
+                                   top: `${150 - Math.sin((missionProgress/100) * Math.PI) * 100}px`
+                                 }}
+                                 transition={{ type: "spring", stiffness: 50 }}
+                                 style={{ transform: 'translate(-50%, -50%)' }}
+                               >
+                                  <div className="relative">
+                                     <div className="absolute -inset-4 bg-amber-500/20 blur-xl rounded-full animate-pulse"></div>
+                                     {selectedMatch.distance > 160 ? <Plane className="w-8 h-8 text-amber-500 rotate-45" /> : <Wind className="w-8 h-8 text-amber-500" />}
+                                  </div>
+                               </motion.div>
 
-                          <div className="space-y-6">
-                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-3"><Navigation className="w-5 h-5 text-blue-500" /> Logistics Chain</h3>
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mission Progress: {Math.round(missionProgress)}%</span>
-                             </div>
-                             <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5 mb-8">
-                                <div className="h-full bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all duration-700" style={{ width: `${missionProgress}%` }}></div>
-                             </div>
-                             <div className="relative pl-8 space-y-10">
-                                <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-slate-800"></div>
-                                {[
-                                  { id: 1, label: 'Organ Recovery', time: '+15M', desc: 'Surgical procurement team deployment.', icon: Target },
-                                  { id: 2, label: 'Packaging', time: '+45M', desc: 'OCS TransMedics hypothermic stabilization.', icon: PackageCheck },
-                                  { id: 3, label: 'In-Air Transit', time: '+1H 20M', desc: 'Aerial bridge to Central Node.', icon: Plane },
-                                  { id: 4, label: 'Recipient OR Link', time: '+2H 10M', desc: 'Final surgical handoff.', icon: StethoscopeIcon },
-                                ].map((step) => {
-                                   const isComplete = currentSimStep > step.id;
-                                   const isActive = currentSimStep === step.id;
-                                   return (
-                                      <div key={step.id} className="relative group/step">
-                                         <div className={`absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 transition-all duration-500 ${
-                                            isComplete ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 
-                                            isActive ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)] scale-125' : 'bg-slate-700'
-                                         }`}></div>
-                                         <div className="flex items-center justify-between">
-                                            <div>
-                                               <div className="flex items-center gap-2">
-                                                  <p className={`text-sm font-black uppercase tracking-widest transition-colors ${isActive || isComplete ? 'text-white' : 'text-slate-600'}`}>{step.label}</p>
-                                                  {isActive && <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>}
-                                                  {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                                               </div>
-                                               <p className="text-xs text-slate-500 font-medium group-hover/step:text-slate-400 transition-colors">{step.desc}</p>
-                                            </div>
-                                            <p className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-amber-500' : 'text-slate-500'}`}>{step.time}</p>
-                                         </div>
-                                      </div>
-                                   );
-                                })}
-                             </div>
-                          </div>
-                       </div>
+                               <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end z-30">
+                                  <div className="space-y-1">
+                                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Origin</p>
+                                     <p className="text-xs font-bold text-white">{selectedMatch.location}</p>
+                                  </div>
+                                  <div className="text-right space-y-1">
+                                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Destination</p>
+                                     <p className="text-xs font-bold text-white">Central Surgical Node</p>
+                                  </div>
+                               </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="bg-slate-900 border border-white/5 p-8 rounded-[40px] space-y-6 group">
+                                  <div className="flex items-center justify-between">
+                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Assignment</p>
+                                     <p className="text-amber-500 font-black text-xs uppercase">Priority 1</p>
+                                  </div>
+                                  <div className="flex items-center gap-6">
+                                     <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">{selectedMatch.distance > 160 ? <Plane className="w-7 h-7 text-blue-400" /> : <Wind className="w-7 h-7 text-emerald-400" />}</div>
+                                     <div>
+                                        <p className="text-xl font-black text-white">{selectedMatch.distance > 160 ? 'Citation CJ4 Jet' : 'Eurocopter EC135'}</p>
+                                        <p className="text-xs text-slate-500 font-medium">LifeFlight Air Logistics #44</p>
+                                     </div>
+                                  </div>
+                               </div>
+                               <div className="bg-slate-900 border border-white/5 p-8 rounded-[40px] space-y-6">
+                                  <div className="flex items-center justify-between">
+                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cold Ischemia Time (Remaining)</p>
+                                     <Timer className="w-4 h-4 text-rose-500 animate-pulse" />
+                                  </div>
+                                  <div>
+                                     <p className="text-3xl font-black text-white">{ischemiaTimer}</p>
+                                     <div className="h-2 bg-slate-800 rounded-full mt-3 overflow-hidden border border-white/5">
+                                        <div className="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-1000" style={{ width: `${85 - missionProgress/4}%` }}></div>
+                                     </div>
+                                  </div>
+                               </div>
+                            </div>
+
+                            <div className="space-y-6">
+                               <div className="flex items-center justify-between">
+                                  <h3 className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-3"><Navigation className="w-5 h-5 text-blue-500" /> Logistics Chain</h3>
+                                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mission Progress: {Math.round(missionProgress)}%</span>
+                               </div>
+                               <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5 mb-8">
+                                  <div className="h-full bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all duration-700" style={{ width: `${missionProgress}%` }}></div>
+                               </div>
+                               <div className="relative pl-8 space-y-10">
+                                  <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-slate-800"></div>
+                                  {[
+                                    { id: 1, label: 'Organ Recovery', time: '+15M', desc: 'Surgical procurement team deployment.', icon: Target },
+                                    { id: 2, label: 'Packaging', time: '+45M', desc: 'OCS TransMedics hypothermic stabilization.', icon: PackageCheck },
+                                    { id: 3, label: 'In-Air Transit', time: '+1H 20M', desc: 'Aerial bridge to Central Node.', icon: Plane },
+                                    { id: 4, label: 'Recipient OR Link', time: '+2H 10M', desc: 'Final surgical handoff.', icon: StethoscopeIcon },
+                                  ].map((step) => {
+                                     const isComplete = currentSimStep > step.id;
+                                     const isActive = currentSimStep === step.id;
+                                     return (
+                                        <div key={step.id} className="relative group/step">
+                                           <div className={`absolute -left-[27px] top-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 transition-all duration-500 ${
+                                              isComplete ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 
+                                              isActive ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)] scale-125' : 'bg-slate-700'
+                                           }`}></div>
+                                           <div className="flex items-center justify-between">
+                                              <div>
+                                                 <div className="flex items-center gap-2">
+                                                    <p className={`text-sm font-black uppercase tracking-widest transition-colors ${isActive || isComplete ? 'text-white' : 'text-slate-600'}`}>{step.label}</p>
+                                                    {isActive && <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>}
+                                                    {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                                                 </div>
+                                                 <p className="text-xs text-slate-500 font-medium group-hover/step:text-slate-400 transition-colors">{step.desc}</p>
+                                              </div>
+                                              <p className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-amber-500' : 'text-slate-500'}`}>{step.time}</p>
+                                           </div>
+                                        </div>
+                                     );
+                                  })}
+                               </div>
+                            </div>
+                         </div>
+                      </div>
                     </div>
                   </div>
 
                   <div className="lg:col-span-4 space-y-10">
+                    {/* Mission Events Log */}
+                    <div className="bg-[#16191F] border border-white/5 p-10 rounded-[48px] shadow-2xl space-y-8 flex flex-col h-[500px]">
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                             <Activity className="w-6 h-6 text-amber-500" />
+                             <h3 className="text-xl font-black text-white">Telemetry</h3>
+                          </div>
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                       </div>
+                       
+                       <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                          {missionEvents.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30">
+                               <Terminal className="w-12 h-12" />
+                               <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Link...</p>
+                            </div>
+                          ) : (
+                            missionEvents.map((event, idx) => (
+                              <div key={idx} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl space-y-1 animate-in slide-in-from-right-4">
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-[8px] font-black text-amber-500 uppercase">{event.time}</span>
+                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                      event.type === 'critical' ? 'bg-rose-500/20 text-rose-500' : 
+                                      event.type === 'success' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-blue-500/20 text-blue-500'
+                                    }`}>{event.type}</span>
+                                 </div>
+                                 <p className="text-[11px] font-bold text-slate-200 leading-tight">{event.msg}</p>
+                              </div>
+                            ))
+                          )}
+                       </div>
+                    </div>
+
                     <div className="bg-[#16191F] border border-white/5 p-10 rounded-[48px] shadow-2xl space-y-10">
                        <div className="flex items-center gap-3">
                           <ThermometerSnowflake className="w-8 h-8 text-blue-500" />
@@ -995,24 +1218,6 @@ const TransplantModule: React.FC<{
                                   </li>
                                 ))}
                              </ul>
-                          </div>
-
-                          <div className="bg-blue-600/5 border border-blue-500/20 p-6 rounded-3xl space-y-4">
-                             <div className="flex items-center gap-3"><ShieldQuestion className="w-4 h-4 text-blue-500" /><p className="text-[10px] font-black uppercase text-blue-500">Primary Factors</p></div>
-                             <div className="space-y-4">
-                                <div>
-                                   <p className="text-[9px] font-black text-white uppercase mb-1">Metabolic Demand</p>
-                                   <p className="text-[9px] text-slate-500 leading-tight">High activity organs (Heart) require significantly shorter allowable times.</p>
-                                </div>
-                                <div>
-                                   <p className="text-[9px] font-black text-white uppercase mb-1">Preservation Method</p>
-                                   <p className="text-[9px] text-slate-500 leading-tight">Perfusion pumps can extend the viable window, specifically for resilient kidneys.</p>
-                                </div>
-                                <div>
-                                   <p className="text-[9px] font-black text-white uppercase mb-1">Donor Age</p>
-                                   <p className="text-[9px] text-slate-500 leading-tight">Donors &gt;60 years often require significantly shorter CIT (&lt;8 hours) for function.</p>
-                                </div>
-                             </div>
                           </div>
                        </div>
                        
@@ -1165,31 +1370,101 @@ const TransplantModule: React.FC<{
         )}
 
         {activeTab === 'audit' && (
-           <div className="max-w-4xl mx-auto space-y-12 text-center">
+           <div className="max-w-5xl mx-auto space-y-12 text-center">
               <div className="space-y-4">
-                <h3 className="text-5xl font-black tracking-tighter text-white">Compliance Node</h3>
-                <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">Real-time statutory verification against federal procurement laws.</p>
+                <h3 className="text-6xl font-black tracking-tighter text-white">Compliance Node</h3>
+                <p className="text-slate-500 text-xl font-medium max-w-2xl mx-auto">Real-time statutory verification against federal procurement laws and ethical allocation frameworks.</p>
               </div>
               {!complianceResult ? (
-                <div className="bg-[#16191F] border border-white/5 p-20 rounded-[64px] shadow-3xl space-y-10 flex flex-col items-center">
-                   <div className="w-24 h-24 bg-rose-500/10 rounded-[32px] flex items-center justify-center border border-rose-500/20 shadow-2xl"><FileSignature className="w-12 h-12 text-rose-500" /></div>
-                   <p className="text-2xl font-black text-slate-300 max-w-sm">Awaiting Statutory Data Sweep...</p>
-                   <button onClick={runCompliance} disabled={isCheckingCompliance || !diagnosis} className="bg-white text-slate-950 px-16 py-6 rounded-3xl font-black text-xl flex items-center gap-4 hover:scale-105 active:scale-95 transition-all shadow-2xl disabled:opacity-30">
-                     {isCheckingCompliance ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShieldCheck className="w-6 h-6" />} Run Compliance Audit
+                <div className="bg-[#16191F] border border-white/5 p-24 rounded-[64px] shadow-3xl space-y-12 flex flex-col items-center relative overflow-hidden">
+                   <div className="absolute inset-0 opacity-5 pointer-events-none">
+                      <div className="absolute inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:40px_40px]"></div>
+                   </div>
+                   <div className="w-32 h-32 bg-rose-500/10 rounded-[48px] flex items-center justify-center border border-rose-500/20 shadow-2xl relative z-10"><FileSignature className="w-16 h-16 text-rose-500" /></div>
+                   <div className="space-y-4 relative z-10">
+                      <p className="text-3xl font-black text-white">Awaiting Statutory Data Sweep</p>
+                      <p className="text-slate-500 font-medium text-lg max-w-sm mx-auto">System will verify HLA matching, waitlist priority, and medical urgency against UNOS/OPTN standards.</p>
+                   </div>
+                   <button 
+                     onClick={runCompliance} 
+                     disabled={isCheckingCompliance || !diagnosis} 
+                     className="bg-white text-slate-950 px-20 py-8 rounded-[32px] font-black text-2xl flex items-center gap-6 hover:scale-105 active:scale-95 transition-all shadow-2xl disabled:opacity-30 relative z-10 group"
+                   >
+                     {isCheckingCompliance ? <Loader2 className="w-8 h-8 animate-spin" /> : <ShieldCheck className="w-8 h-8 group-hover:rotate-12 transition-transform" />} Run Compliance Audit
                    </button>
                 </div>
               ) : (
-                <div className="bg-[#16191F] border border-white/5 p-12 rounded-[60px] text-left space-y-10 shadow-3xl animate-in fade-in slide-in-from-top-4">
-                   <div className={`p-10 rounded-[40px] border flex items-center justify-between ${complianceResult.compliant ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
-                      <div className="flex items-center gap-8">
-                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${complianceResult.compliant ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>{complianceResult.compliant ? <CheckCircle2 className="w-8 h-8" /> : <AlertCircle className="w-8 h-8" />}</div>
-                         <div><p className="text-[10px] font-black text-slate-500 uppercase mb-1">Outcome</p><p className="text-3xl font-black text-white">{complianceResult.compliant ? 'Regulatory PASS' : 'Validation Warning'}</p></div>
+                <div className="bg-[#16191F] border border-white/5 p-16 rounded-[72px] text-left space-y-12 shadow-3xl animate-in fade-in slide-in-from-top-8 relative overflow-hidden">
+                   <div className={`absolute top-0 left-0 w-full h-2 ${complianceResult.compliant ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                   
+                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+                      <div className="flex items-center gap-10">
+                         <div className={`w-24 h-24 rounded-[32px] flex items-center justify-center shadow-2xl ${complianceResult.compliant ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
+                            {complianceResult.compliant ? <CheckCircle2 className="w-12 h-12" /> : <AlertCircle className="w-12 h-12" />}
+                         </div>
+                         <div>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Audit Outcome</p>
+                            <p className="text-5xl font-black text-white tracking-tight">{complianceResult.compliant ? 'Regulatory PASS' : 'Validation Warning'}</p>
+                         </div>
                       </div>
-                      <button onClick={() => setComplianceResult(null)} className="w-12 h-12 hover:bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 transition-all"><RefreshCcw className="w-5 h-5 text-slate-600" /></button>
+                      <div className="flex items-center gap-4">
+                         <div className="text-right hidden md:block">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Timestamp</p>
+                            <p className="text-sm font-bold text-white">{new Date().toLocaleTimeString()}</p>
+                         </div>
+                         <button onClick={() => setComplianceResult(null)} className="w-16 h-16 hover:bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 transition-all group"><RefreshCcw className="w-6 h-6 text-slate-600 group-hover:rotate-180 transition-transform duration-700" /></button>
+                      </div>
                    </div>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                      <div className="space-y-6"><h4 className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Legal Analysis</h4><p className="text-slate-300 text-lg font-medium italic leading-relaxed">"{complianceResult.reasoning}"</p></div>
-                      <div className="space-y-6"><h4 className="text-[10px] font-black uppercase text-slate-600 tracking-widest">Deficiency Log</h4><div className="space-y-4">{complianceResult.missingDocs.length > 0 ? complianceResult.missingDocs.map((d: string, i: number) => <div key={i} className="flex items-center gap-4 p-5 bg-slate-900/50 border border-rose-500/20 rounded-2xl text-xs font-black text-rose-500"><AlertTriangle className="w-4 h-4 shrink-0" /> {d}</div>) : <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl text-xs font-black text-emerald-400 flex items-center gap-4"><CheckCircle2 className="w-5 h-5 shrink-0" /> Integrity verified. All criteria met.</div>}</div></div>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                      <div className="space-y-8">
+                         <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 border border-blue-500/20"><Scale className="w-5 h-5" /></div>
+                            <h4 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Legal Analysis</h4>
+                         </div>
+                         <div className="bg-slate-900/50 p-10 rounded-[40px] border border-white/5 relative">
+                            <div className="absolute top-6 right-8 opacity-10"><Quote className="w-12 h-12 text-blue-500" /></div>
+                            <p className="text-xl text-slate-200 font-medium italic leading-relaxed relative z-10">"{complianceResult.reasoning}"</p>
+                         </div>
+                      </div>
+                      
+                      <div className="space-y-8">
+                         <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-500/20"><AlertTriangle className="w-5 h-5" /></div>
+                            <h4 className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Deficiency Log</h4>
+                         </div>
+                         <div className="space-y-4">
+                            {complianceResult.missingDocs.length > 0 ? (
+                              complianceResult.missingDocs.map((d: string, i: number) => (
+                                <div key={i} className="flex items-center gap-6 p-6 bg-rose-500/5 border border-rose-500/20 rounded-3xl group hover:bg-rose-500/10 transition-colors">
+                                   <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-500 shrink-0"><AlertCircle className="w-5 h-5" /></div>
+                                   <p className="text-sm font-black text-rose-500 uppercase tracking-widest">{d}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-10 bg-emerald-500/5 border border-emerald-500/20 rounded-[40px] flex flex-col items-center justify-center text-center space-y-6">
+                                 <div className="w-16 h-16 bg-emerald-500/20 rounded-3xl flex items-center justify-center text-emerald-500"><CheckCircle2 className="w-8 h-8" /></div>
+                                 <div className="space-y-1">
+                                    <p className="text-lg font-black text-emerald-500 uppercase tracking-widest">Integrity Verified</p>
+                                    <p className="text-xs text-slate-500 font-medium">All statutory criteria met for allocation.</p>
+                                 </div>
+                              </div>
+                            )}
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="flex items-center gap-6">
+                         <div className="flex -space-x-3">
+                            {[1,2,3].map(i => <div key={i} className="w-10 h-10 rounded-full border-2 border-[#16191F] bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500">JD</div>)}
+                         </div>
+                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Digital Signatures Appended</p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-blue-500/10 border border-blue-500/20 px-6 py-3 rounded-2xl">
+                         <Link2 className="w-4 h-4 text-blue-500" />
+                         <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Blockchain Hash: 0x8f...3e2a</span>
+                      </div>
                    </div>
                 </div>
               )}
