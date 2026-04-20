@@ -11,7 +11,7 @@
 
 ## 🔬 Research Foundation
 **ScanWise AI** is the functional implementation of the research paper:  
-*"ScanWise: An AI-Powered Multi-Scan Medical Imaging and Report Interpretation System for Multimodal Clinical Decision Support"* (NCISF 2026).
+*"ScanWise: An AI-Powered Multi-Scan Medical Imaging and Report Interpretation System for Multimodal Clinical Decision Support"* - (NCISF 2026).
 
 The platform implements the **Decision-Level Fusion Architecture** proposed in the study, combining:
 *   **Imaging Probability Vectors ($I$):** Derived from DenseNet121 (Chest X-ray) and CNN (Brain MRI) backbones.
